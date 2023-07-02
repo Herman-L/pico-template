@@ -1,7 +1,5 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 
-use core::mem::MaybeUninit;
-
 use cortex_m::delay::Delay;
 use embedded_alloc::Heap;
 use rp_pico::hal::clocks::init_clocks_and_plls;
@@ -13,16 +11,10 @@ use rp_pico::Pins;
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 
-// The heap data, 128KiB.
-// To do: Figure out how much is actually available.
-const HEAP_SIZE: usize = 0x20000;
-static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
-
 /// The entry point. Sets up the hardware.
 #[cortex_m_rt::entry]
 fn entry() -> ! {
-    // Initialize the heap.
-    unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_MEM.len()) }
+    unsafe { init_heap() };
 
     // Hardware setup.
     let mut pac = Peripherals::take().unwrap();
@@ -65,6 +57,21 @@ fn entry() -> ! {
     );
 
     super::start(delay, timer, pins);
+}
+
+/// Initializes the heap using the symbols provided by memory.x.
+unsafe fn init_heap() {
+    extern "C" {
+        static mut _heap_start: u32;
+        static mut _heap_end: u32;
+    }
+
+    unsafe {
+        let start = &mut _heap_start as *mut u32 as usize;
+        let end = &mut _heap_end as *mut u32 as usize;
+        assert!(end > start);
+        HEAP.init(start, end - start);
+    }
 }
 
 /// Panic handler which prints the panic info to the serial device.
