@@ -1,3 +1,4 @@
+#![feature(stdsimd)]
 #![no_std]
 #![no_main]
 
@@ -11,7 +12,7 @@ use rp_pico::hal::gpio::DynPin;
 use rp_pico::hal::Timer;
 use rp_pico::Pins;
 
-use crate::hardware::{println, read_until, serial_available};
+use crate::hardware::serial;
 
 fn start(mut delay: Delay, _timer: Timer, pins: Pins) -> ! {
     // Get the LED pin.
@@ -25,12 +26,12 @@ fn start(mut delay: Delay, _timer: Timer, pins: Pins) -> ! {
         led_pin.set_low().unwrap();
         delay.delay_ms(500);
 
-        if serial_available() {
+        if serial::available() {
             // Read and write serial.
-            let line = read_until(b'\r');
+            let line = serial::read_until(b'\r');
             let name = line.trim();
 
-            println!("Hello, {name}!");
+            serial::println!("Hello, {name}!");
         }
     }
 }
