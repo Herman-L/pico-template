@@ -79,16 +79,8 @@ unsafe fn init_heap() {
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     serial::println!("{info}");
     loop {
-        wait_for_interrupts();
+        cortex_m::asm::wfi();
     }
-}
-
-/// Safe wrapper around [`core::arch::arm::__wfi`].
-fn wait_for_interrupts() {
-    #[cfg(target_arch = "arm")]
-    unsafe {
-        core::arch::arm::__wfi()
-    };
 }
 
 /// Serial communication.
@@ -203,7 +195,7 @@ pub mod serial {
 
         // Wait until data is available.
         while READ_AVAILABLE.load(Ordering::Relaxed) == 0 {
-            super::wait_for_interrupts();
+            core::hint::spin_loop();
         }
 
         cortex_m::interrupt::free(|_| {
@@ -267,7 +259,7 @@ pub mod serial {
         while !data.is_empty() {
             // Wait until writing is available.
             while !WRITE_AVAILABLE.load(Ordering::Relaxed) {
-                super::wait_for_interrupts();
+                core::hint::spin_loop();
             }
 
             // Write as much as possible to the device.
